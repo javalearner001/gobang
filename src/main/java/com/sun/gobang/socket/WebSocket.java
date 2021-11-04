@@ -28,8 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class WebSocket {
 
-    ArrayBlockingQueue blockingQueue = new ArrayBlockingQueue(1000);
-
     private static final Map<String,WebSocket> webSocketMap = new ConcurrentHashMap<>();
 
     /**
@@ -100,11 +98,19 @@ public class WebSocket {
      * 匹配对手 加入队列
      */
     public void matchOpponent(String userId){
-        blockingQueue.add(userId);
+        SessionQueue sessionQueue = SessionQueue.getSessionQueue();
+
+        if (!sessionQueue.contains(userId)){
+            try {
+                sessionQueue.produce(userId);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
         MessageResponse messageResponse = new MessageResponse("请稍等，正在为您匹配对手");
         sendObjMessage(userId,messageResponse);
-        log.info("队列的数据为:{}",JSON.toJSONString(blockingQueue));
+        log.info("队列的数据为:{}",JSON.toJSONString(sessionQueue));
     }
 
 }
