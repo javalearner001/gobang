@@ -1,11 +1,15 @@
 package com.sun.gobang.socket;
 
 import com.alibaba.fastjson.JSON;
-import com.sun.gobang.entity.InitParam;
+import com.sun.gobang.chess.MatchOpponentService;
+import com.sun.gobang.entity.ChessRoom;
 import com.sun.gobang.entity.SocketMessage;
 import com.sun.gobang.entity.response.MessageResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import javax.websocket.OnClose;
@@ -16,7 +20,6 @@ import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.net.SocketException;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -26,9 +29,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @ServerEndpoint(value = "/message/{userId}")
 @Slf4j
-public class WebSocket {
+public class WebSocket implements ApplicationContextAware{
 
     private static final Map<String,WebSocket> webSocketMap = new ConcurrentHashMap<>();
+
+    private static ApplicationContext applicationContext;
+    private MatchOpponentService matchOpponentService;
 
     /**
      * 与某个客户端的连接会话，需要通过它来给客户端发送数据
@@ -46,6 +52,7 @@ public class WebSocket {
         log.info("[websocket] 有新的连接，总数:{}",webSocketMap.size());
 
         this.session.getAsyncRemote().sendText("恭喜您成功连接上WebSocket-->当前在线人数为："+ webSocketMap.size());
+        matchOpponentService = applicationContext.getBean(MatchOpponentService.class);
     }
 
     @OnClose
@@ -111,6 +118,17 @@ public class WebSocket {
         MessageResponse messageResponse = new MessageResponse("请稍等，正在为您匹配对手");
         sendObjMessage(userId,messageResponse);
         log.info("队列的数据为:{}",JSON.toJSONString(sessionQueue));
+        //添加之后，判断队列长度，>=2 ,要对队列进行出队列，创建房间
+        if (sessionQueue.size() >= 2){
+            String userIdOne = sessionQueue.consume();
+            String userIdTwo = sessionQueue.consume();
+
+            matchOpponentService.createChessRoom(userIdOne,userIdTwo);
+        }
     }
 
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        WebSocket.applicationContext = applicationContext;
+    }
 }

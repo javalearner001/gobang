@@ -40,8 +40,13 @@ public class SessionQueue {
     }
 
     //消费出队
-    public String consume() throws InterruptedException {
-        return blockingQueue.take();
+    public String consume() {
+        try {
+            return blockingQueue.take();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public boolean contains(String userId) {
