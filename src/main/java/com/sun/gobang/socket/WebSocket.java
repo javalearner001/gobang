@@ -2,12 +2,10 @@ package com.sun.gobang.socket;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.gobang.chess.MatchOpponentService;
-import com.sun.gobang.entity.ChessRoom;
 import com.sun.gobang.entity.SocketMessage;
 import com.sun.gobang.entity.response.MessageResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
@@ -29,9 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @ServerEndpoint(value = "/message/{userId}")
 @Slf4j
-public class WebSocket implements ApplicationContextAware{
+public class WebSocket implements ApplicationContextAware {
 
-    private static final Map<String,WebSocket> webSocketMap = new ConcurrentHashMap<>();
+    public static final Map<String, WebSocket> webSocketMap = new ConcurrentHashMap<>();
 
     private static ApplicationContext applicationContext;
     private MatchOpponentService matchOpponentService;
@@ -43,34 +41,34 @@ public class WebSocket implements ApplicationContextAware{
 
     @OnOpen
     public void onOpen(Session session, @PathParam("userId") String userId) throws SocketException {
-        if (webSocketMap.containsKey(userId)){
+        if (webSocketMap.containsKey(userId)) {
             log.info("此连接已存在！");
             return;
         }
         this.session = session;
-        webSocketMap.put(userId,this);
-        log.info("[websocket] 有新的连接，总数:{}",webSocketMap.size());
+        webSocketMap.put(userId, this);
+        log.info("[websocket] 有新的连接，总数:{}", webSocketMap.size());
 
-        this.session.getAsyncRemote().sendText("恭喜您成功连接上WebSocket-->当前在线人数为："+ webSocketMap.size());
+        this.session.getAsyncRemote().sendText("恭喜您成功连接上WebSocket-->当前在线人数为：" + webSocketMap.size());
         matchOpponentService = applicationContext.getBean(MatchOpponentService.class);
     }
 
     @OnClose
-    public void onClose(){
+    public void onClose() {
         String id = this.session.getId();
-        if (id != null){
+        if (id != null) {
             webSocketMap.remove(id);
-            log.info("[websocket] 连接断开，总数:{}",webSocketMap.size());
+            log.info("[websocket] 连接断开，总数:{}", webSocketMap.size());
         }
     }
 
     @OnMessage
-    public void onMessage(String message){
+    public void onMessage(String message) {
         SocketMessage socketMessage = JSON.parseObject(message, SocketMessage.class);
-        log.info("[webSocket]收到客户端发送的消息，socketMessage:{}",JSON.toJSONString(socketMessage));
+        log.info("[webSocket]收到客户端发送的消息，socketMessage:{}", JSON.toJSONString(socketMessage));
 
-        switch (socketMessage.getMessageType()){
-            case 100 :
+        switch (socketMessage.getMessageType()) {
+            case 100:
                 sendMessage(socketMessage.getText());
                 break;
             case 1001:
@@ -81,10 +79,11 @@ public class WebSocket implements ApplicationContextAware{
 
     /**
      * 发送消息 广播
+     *
      * @param message
      * @return 全部都发送一遍
      */
-    public void sendMessage(String message){
+    public void sendMessage(String message) {
         for (WebSocket webSocket : webSocketMap.values()) {
             webSocket.session.getAsyncRemote().sendText(message);
         }
@@ -94,20 +93,17 @@ public class WebSocket implements ApplicationContextAware{
     /**
      * 此为单点消息 (发送对象)
      */
-    public void sendObjMessage(String userId, MessageResponse message) {
-        WebSocket webSocket = webSocketMap.get(userId);
-        if (webSocket != null){
-            webSocket.session.getAsyncRemote().sendText(message.getMessage());
-        }
+    public void sendObjMessage(MessageResponse message) {
+        this.session.getAsyncRemote().sendText(message.getMessage());
     }
 
     /**
      * 匹配对手 加入队列
      */
-    public void matchOpponent(String userId){
+    public void matchOpponent(String userId) {
         SessionQueue sessionQueue = SessionQueue.getSessionQueue();
 
-        if (!sessionQueue.contains(userId)){
+        if (!sessionQueue.contains(userId)) {
             try {
                 sessionQueue.produce(userId);
             } catch (InterruptedException e) {
@@ -116,14 +112,14 @@ public class WebSocket implements ApplicationContextAware{
         }
 
         MessageResponse messageResponse = new MessageResponse("请稍等，正在为您匹配对手");
-        sendObjMessage(userId,messageResponse);
-        log.info("队列的数据为:{}",JSON.toJSONString(sessionQueue));
+        sendObjMessage(messageResponse);
+        log.info("队列的数据为:{}", JSON.toJSONString(sessionQueue));
         //添加之后，判断队列长度，>=2 ,要对队列进行出队列，创建房间
-        if (sessionQueue.size() >= 2){
+        if (sessionQueue.size() >= 2) {
             String userIdOne = sessionQueue.consume();
             String userIdTwo = sessionQueue.consume();
 
-            matchOpponentService.createChessRoom(userIdOne,userIdTwo);
+            matchOpponentService.createChessRoom(userIdOne, userIdTwo);
         }
     }
 
