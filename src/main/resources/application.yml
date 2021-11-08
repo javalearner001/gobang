@@ -15,6 +15,13 @@ mybatis:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+# 日志配置 1.定义dao包的几倍  2.定义日志输出位置  3.配置每天一个日志文件，最大文件数5个
 logging:
   level:
     com.apple.firsttest.dao: debug
+  file:
+    path: /data/log
+  logback:
+    rollingpolicy:
+      file-name-pattern: gobang-%d{yyyy-MM-dd}.log
+      max-history: 5
