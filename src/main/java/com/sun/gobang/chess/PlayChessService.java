@@ -1,12 +1,6 @@
 package com.sun.gobang.chess;
 
 import com.sun.gobang.entity.Chess;
-import com.sun.gobang.socket.WebSocket;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

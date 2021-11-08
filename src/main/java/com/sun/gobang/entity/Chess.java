@@ -1,7 +1,5 @@
 package com.sun.gobang.entity;
 
-import java.awt.*;
-
 /**
  * 棋子类
  * @author sunkai
