@@ -2,7 +2,9 @@ package com.sun.gobang.socket;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.gobang.chess.MatchOpponentService;
+import com.sun.gobang.chess.PlayChessService;
 import com.sun.gobang.entity.SocketMessage;
+import com.sun.gobang.entity.enumc.MessageTypeEnum;
 import com.sun.gobang.entity.response.MessageResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
@@ -33,6 +35,7 @@ public class WebSocket implements ApplicationContextAware {
 
     private static ApplicationContext applicationContext;
     private MatchOpponentService matchOpponentService;
+    private PlayChessService playChessService;
 
     /**
      * 与某个客户端的连接会话，需要通过它来给客户端发送数据
@@ -49,8 +52,11 @@ public class WebSocket implements ApplicationContextAware {
         webSocketMap.put(userId, this);
         log.info("[websocket] 有新的连接，总数:{}", webSocketMap.size());
 
-        this.session.getAsyncRemote().sendText("恭喜您成功连接上WebSocket-->当前在线人数为：" + webSocketMap.size());
+        MessageResponse response = new MessageResponse("恭喜您成功连接上WebSocket-->当前在线人数为：" + webSocketMap.size(),MessageTypeEnum.BROAD_CAST.getCode());
+        sendObjMessage(response);
+        //service 配置
         matchOpponentService = applicationContext.getBean(MatchOpponentService.class);
+        playChessService = applicationContext.getBean(PlayChessService.class);
     }
 
     @OnClose
@@ -69,32 +75,46 @@ public class WebSocket implements ApplicationContextAware {
 
         switch (socketMessage.getMessageType()) {
             case 100:
-                sendMessage(socketMessage.getText());
+                MessageResponse response = new MessageResponse(socketMessage.getText(), MessageTypeEnum.BROAD_CAST.getCode());
+                sendMessage(response);
                 break;
             case 1001:
                 matchOpponent(socketMessage.getUserId());
+                break;
+            case 1002:
+                playChess(socketMessage);
+                break;
         }
 
     }
 
     /**
+     * 下棋
+     * @param socketMessage
+     */
+    private void playChess(SocketMessage socketMessage) {
+
+        playChessService.lowChess(socketMessage);
+    }
+
+    /**
      * 发送消息 广播
      *
-     * @param message
+     * @param messageResponse
      * @return 全部都发送一遍
      */
-    public void sendMessage(String message) {
+    public void sendMessage(MessageResponse messageResponse) {
         for (WebSocket webSocket : webSocketMap.values()) {
-            webSocket.session.getAsyncRemote().sendText(message);
+            webSocket.session.getAsyncRemote().sendText(JSON.toJSONString(messageResponse));
         }
-        log.info("【wesocket】广播消息,message={}", message);
+        log.info("【wesocket】广播消息,message={}", JSON.toJSONString(messageResponse));
     }
 
     /**
      * 此为单点消息 (发送对象)
      */
     public void sendObjMessage(MessageResponse message) {
-        this.session.getAsyncRemote().sendText(message.getMessage());
+        this.session.getAsyncRemote().sendText(JSON.toJSONString(message));
     }
 
     /**
@@ -111,7 +131,7 @@ public class WebSocket implements ApplicationContextAware {
             }
         }
 
-        MessageResponse messageResponse = new MessageResponse("请稍等，正在为您匹配对手");
+        MessageResponse messageResponse = new MessageResponse("请稍等，正在为您匹配对手", MessageTypeEnum.BROAD_CAST.getCode());
         sendObjMessage(messageResponse);
         log.info("队列的数据为:{}", JSON.toJSONString(sessionQueue));
         //添加之后，判断队列长度，>=2 ,要对队列进行出队列，创建房间

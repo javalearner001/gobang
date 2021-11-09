@@ -8,8 +8,14 @@ public class MessageResponse {
 
     private String message;
 
-    public MessageResponse(String message) {
+    /**
+     * 消息类型  100：广播消息  1001：匹配开始
+     */
+    private int messageType;;
+
+    public MessageResponse(String message, int messageType) {
         this.message = message;
+        this.messageType = messageType;
     }
 
     public String getMessage() {
@@ -18,5 +24,13 @@ public class MessageResponse {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public int getMessageType() {
+        return messageType;
+    }
+
+    public void setMessageType(int messageType) {
+        this.messageType = messageType;
     }
 }

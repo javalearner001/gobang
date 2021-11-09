@@ -1,6 +1,14 @@
 package com.sun.gobang.chess;
 
+import com.alibaba.fastjson.JSON;
 import com.sun.gobang.entity.Chess;
+import com.sun.gobang.entity.ChessRoom;
+import com.sun.gobang.entity.SocketMessage;
+import com.sun.gobang.entity.enumc.MessageTypeEnum;
+import com.sun.gobang.entity.response.MessageResponse;
+import com.sun.gobang.singlesource.ChessRoomMapFactory;
+import com.sun.gobang.singlesource.UserRoomMapFactory;
+import com.sun.gobang.socket.WebSocket;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,6 +28,44 @@ public class PlayChessService {
     private static final boolean[][] arr = new boolean[SIZE][SIZE];
     private static final int[][] colors = new int[SIZE][SIZE];
 
+
+    public void lowChess(SocketMessage socketMessage) {
+        Chess chess = socketMessage.getChess();
+
+        String roomId = UserRoomMapFactory.getUserRoomMap().get(socketMessage.getUserId());
+        ChessRoom chessRoom = ChessRoomMapFactory.getChessRoomMap().get(roomId);
+        int[][] checkBoard = chessRoom.getCheckBoard();
+        //1.判断平局
+        //2.落子
+        if (checkBoard[chess.getX()][chess.getY()] != 0) {
+            System.out.println("同一坐标重复落子，无效！");
+            return;
+        }
+        checkBoard[chess.getX()][chess.getY()] = chess.getColor();
+
+        //3.将全部数据返回对方用户
+        String anotherUserId = chessRoom.getAnotherUserId(socketMessage.getUserId());
+
+        MessageResponse messageResponse = new MessageResponse(JSON.toJSONString(checkBoard), MessageTypeEnum.CHECK_BOARD_DATA.getCode());
+        WebSocket.webSocketMap.get(anotherUserId).sendObjMessage(messageResponse);
+
+
+        /*// 出现五连子，结束游戏
+        if (LogicService.isWin(chessList,chess,arr,colors)) {
+            // 出现五连，发送结果消息
+
+        }else {
+            //通知对手下棋
+
+        }*/
+
+        /*for (int x = 0 ; x < checkBoard.length ; x++){
+            int[] yArr = checkBoard[x];
+            for ()
+        }*/
+    }
+
+
     public void piece(int x, int y, int color) {
         if (chessList.size() == SIZE * SIZE) {
             System.out.println("棋盘已满，游戏结束");
@@ -29,13 +75,6 @@ public class PlayChessService {
             return;
         }
 
-        // 判断下子是否重复
-        if (arr[x][y]) {
-            System.out.println("同一坐标重复落子，无效！");
-            return;
-        }
-
-        arr[x][y] = true;
         // 绘制棋子
         Chess chess = new Chess(x,y,color);
         // 将棋子的颜色记录到数组colors 中

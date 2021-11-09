@@ -9,7 +9,10 @@ public class SocketMessage {
     private String userId;
 
     private String text;
-
+    /**
+     * 下棋的棋子数据
+     */
+    private Chess chess;
     /**
      * 消息类型  100：广播消息  1001：匹配开始
      */
@@ -37,5 +40,13 @@ public class SocketMessage {
 
     public void setMessageType(int messageType) {
         this.messageType = messageType;
+    }
+
+    public Chess getChess() {
+        return chess;
+    }
+
+    public void setChess(Chess chess) {
+        this.chess = chess;
     }
 }
